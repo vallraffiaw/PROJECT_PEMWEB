@@ -10,6 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
     $confirmPassword = $_POST["confirm_password"] ?? "";
+    $role = "karyawan";
 
     if ($name === "") {
         $errors[] = "Nama lengkap wajib diisi.";
@@ -38,8 +39,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $errors[] = "Username atau email sudah digunakan.";
         } else {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $insert = $conn->prepare("INSERT INTO users (name, username, email, password) VALUES (?, ?, ?, ?)");
-            $insert->bind_param("ssss", $name, $username, $email, $hashedPassword);
+            $insert = $conn->prepare("INSERT INTO users (name, username, email, password, role) VALUES (?, ?, ?, ?, ?)");
+            $insert->bind_param("sssss", $name, $username, $email, $hashedPassword, $role);
 
             if ($insert->execute()) {
                 $success = "Registrasi berhasil. Silakan login.";
