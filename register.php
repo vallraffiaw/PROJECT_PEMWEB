@@ -10,7 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
     $confirmPassword = $_POST["confirm_password"] ?? "";
-    $role = "karyawan";
+    $role = $_POST["role"] ?? "";
 
     if ($name === "") {
         $errors[] = "Nama lengkap wajib diisi.";
@@ -26,6 +26,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
     if ($password !== $confirmPassword) {
         $errors[] = "Konfirmasi password tidak cocok.";
+    }
+    if (!in_array($role, ["karyawan", "atasan"], true)) {
+        $errors[] = "Pilih role Karyawan atau Atasan.";
     }
 
     if (!$errors) {
@@ -96,6 +99,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($_POST["email"] ?? "") ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Daftar sebagai</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="">Pilih role</option>
+                                    <option value="karyawan" <?= ($_POST["role"] ?? "") === "karyawan" ? "selected" : "" ?>>Karyawan</option>
+                                    <option value="atasan" <?= ($_POST["role"] ?? "") === "atasan" ? "selected" : "" ?>>Atasan/Admin</option>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
