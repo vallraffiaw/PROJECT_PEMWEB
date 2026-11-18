@@ -96,12 +96,15 @@ function connection(): mysqli
     $createSuratTugas = "CREATE TABLE IF NOT EXISTS surat_tugas (
         id_surat INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
         id_penugasan INT UNSIGNED NOT NULL,
+        id_atasan INT UNSIGNED DEFAULT NULL,
         nomor_surat VARCHAR(50) NOT NULL UNIQUE,
         tanggal_terbit DATE NOT NULL,
         file_surat VARCHAR(255) DEFAULT NULL,
         UNIQUE KEY uq_surat_tugas_penugasan (id_penugasan),
         CONSTRAINT fk_surat_tugas_penugasan FOREIGN KEY (id_penugasan) REFERENCES penugasan(id_penugasan)
-            ON UPDATE CASCADE ON DELETE CASCADE
+            ON UPDATE CASCADE ON DELETE CASCADE,
+        CONSTRAINT fk_surat_tugas_atasan FOREIGN KEY (id_atasan) REFERENCES karyawan(id_karyawan)
+            ON UPDATE CASCADE ON DELETE SET NULL
     ) ENGINE=InnoDB";
 
     foreach ([$createKaryawan, $createPengajuan, $createPenugasan, $createSuratTugas] as $createTable) {
@@ -109,6 +112,24 @@ function connection(): mysqli
             die("Error creating application table: " . $conn->error);
         }
     }
+
+    $letterColumn = $conn->query("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '$dbname'
+        AND TABLE_NAME = 'surat_tugas'
+        AND COLUMN_NAME = 'id_atasan'");
+    if ($letterColumn && $letterColumn->num_rows === 0) {
+        if (!$conn->query("ALTER TABLE surat_tugas
+            ADD COLUMN id_atasan INT UNSIGNED DEFAULT NULL AFTER id_penugasan,
+            ADD CONSTRAINT fk_surat_tugas_atasan
+                FOREIGN KEY (id_atasan) REFERENCES karyawan(id_karyawan)
+                ON UPDATE CASCADE ON DELETE SET NULL")) {
+            die("Error adding surat_tugas supervisor column: " . $conn->error);
+        }
+    }
+    $conn->query("UPDATE surat_tugas s
+        JOIN penugasan t ON t.id_penugasan = s.id_penugasan
+        SET s.id_atasan = t.id_atasan
+        WHERE s.id_atasan IS NULL");
     
     return $conn;
 }

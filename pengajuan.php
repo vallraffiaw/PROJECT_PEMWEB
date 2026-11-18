@@ -129,9 +129,13 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<style>
+.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}
+.back-circle:hover{background:#eef4ff;color:#1d4ed8}
+</style>
 <nav class="navbar navbar-light bg-white border-bottom">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="index.php">← Dashboard</a>
+        <a class="back-circle" href="index.php" aria-label="Kembali ke Dashboard">←</a>
     </div>
 </nav>
 <main class="container py-4">

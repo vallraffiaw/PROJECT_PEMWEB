@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS `penugasan` (
 CREATE TABLE IF NOT EXISTS `surat_tugas` (
     `id_surat` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `id_penugasan` INT UNSIGNED NOT NULL,
+    `id_atasan` INT UNSIGNED DEFAULT NULL,
     `nomor_surat` VARCHAR(50) NOT NULL,
     `tanggal_terbit` DATE NOT NULL,
     `file_surat` VARCHAR(255) DEFAULT NULL,
@@ -102,7 +103,11 @@ CREATE TABLE IF NOT EXISTS `surat_tugas` (
     CONSTRAINT `fk_surat_tugas_penugasan`
         FOREIGN KEY (`id_penugasan`) REFERENCES `penugasan` (`id_penugasan`)
         ON UPDATE CASCADE
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT `fk_surat_tugas_atasan`
+        FOREIGN KEY (`id_atasan`) REFERENCES `karyawan` (`id_karyawan`)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;

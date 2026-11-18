@@ -50,7 +50,8 @@ $conn->close();
 <title>Persetujuan Pengajuan</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>
 <body class="bg-light">
-<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="navbar-brand fw-bold" href="dashboard_atasan.php">← Dashboard Atasan</a></div></nav>
+<style>.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}.back-circle:hover{background:#eef4ff;color:#1d4ed8}</style>
+<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="back-circle" href="dashboard_atasan.php" aria-label="Kembali ke Dashboard">←</a></div></nav>
 <main class="container py-4">
     <h1 class="h4 mb-3">Pengajuan Perjalanan Dinas</h1>
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif;?>

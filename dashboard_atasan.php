@@ -8,6 +8,47 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "atasan") {
 }
 
 $conn = connection();
+$message = "";
+$error = "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $requestId = filter_input(INPUT_POST, "id_pengajuan", FILTER_VALIDATE_INT);
+    $action = $_POST["action"] ?? "";
+
+    if (!$requestId) {
+        $error = "Pengajuan tidak valid.";
+    } elseif ($action === "approve") {
+        $stmt = $conn->prepare(
+            "UPDATE pengajuan
+             SET status='Disetujui', alasan_penolakan=NULL
+             WHERE id_pengajuan=? AND status='Menunggu'"
+        );
+        $stmt->bind_param("i", $requestId);
+        $stmt->execute();
+        $message = $stmt->affected_rows
+            ? "Pengajuan berhasil disetujui."
+            : "Pengajuan tidak ditemukan atau sudah diproses.";
+        $stmt->close();
+    } elseif ($action === "reject") {
+        $reason = trim($_POST["alasan_penolakan"] ?? "");
+        if ($reason === "") {
+            $error = "Alasan penolakan wajib diisi.";
+        } else {
+            $stmt = $conn->prepare(
+                "UPDATE pengajuan
+                 SET status='Ditolak', alasan_penolakan=?
+                 WHERE id_pengajuan=? AND status='Menunggu'"
+            );
+            $stmt->bind_param("si", $reason, $requestId);
+            $stmt->execute();
+            $message = $stmt->affected_rows
+                ? "Pengajuan berhasil ditolak."
+                : "Pengajuan tidak ditemukan atau sudah diproses.";
+            $stmt->close();
+        }
+    }
+}
+
 $counts = [
     "karyawan" => 0,
     "menunggu" => 0,
@@ -17,7 +58,7 @@ $counts = [
 
 foreach ($counts as $key => $unused) {
     $sql = match ($key) {
-        "karyawan" => "SELECT COUNT(*) AS total FROM karyawan",
+        "karyawan" => "SELECT COUNT(*) AS total FROM karyawan k JOIN users u ON u.id=k.id_user WHERE u.role='karyawan'",
         "menunggu" => "SELECT COUNT(*) AS total FROM pengajuan WHERE status='Menunggu'",
         "disetujui" => "SELECT COUNT(*) AS total FROM pengajuan WHERE status='Disetujui'",
         "aktif" => "SELECT COUNT(*) AS total FROM penugasan WHERE status='Aktif'",
@@ -27,11 +68,12 @@ foreach ($counts as $key => $unused) {
 
 $requests = [];
 $result = $conn->query(
-    "SELECT p.id_pengajuan, p.tujuan, p.tanggal_berangkat, p.status,
-            k.nama, k.departemen
+    "SELECT p.id_pengajuan, p.tujuan, p.tanggal_berangkat, p.tanggal_pulang,
+            p.keperluan, p.dokumen, p.status, p.alasan_penolakan,
+            k.nama, k.departemen, k.jabatan
      FROM pengajuan p
      JOIN karyawan k ON k.id_karyawan=p.id_karyawan
-     ORDER BY p.tanggal_pengajuan DESC LIMIT 5"
+     ORDER BY p.tanggal_pengajuan DESC"
 );
 while ($row = $result->fetch_assoc()) {
     $requests[] = $row;
@@ -46,100 +88,130 @@ $conn->close();
     <title>Dashboard Atasan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root { --navy:#243d67; --blue:#2f66f6; --sidebar:220px; }
+        :root { --navy:#243d67; --blue:#2f66f6; }
         body { background:#f4f7fb; }
-        .sidebar { position:fixed; inset:0 auto 0 0; width:var(--sidebar); background:var(--navy); color:#fff; z-index:1000; }
-        .brand { height:64px; display:flex; align-items:center; padding:0 18px; font-weight:700; border-bottom:1px solid rgba(255,255,255,.12); }
-        .menu { padding:16px 10px; }
-        .menu a { display:flex; gap:10px; align-items:center; min-height:44px; padding:10px 12px; margin:3px 0; color:#dbe5f4; text-decoration:none; border-radius:7px; }
-        .menu a:hover,.menu a.active { background:#2f66f6; color:#fff; }
-        .main { margin-left:var(--sidebar); min-height:100vh; }
-        .topbar { height:64px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 24px; border-bottom:1px solid #e5eaf2; }
-        .content { max-width:1150px; margin:auto; padding:24px; }
+        .main { margin-left:0; min-height:100vh; }
+        .topbar { height:64px; display:flex; align-items:center; padding:0 max(24px, calc((100vw - 1120px) / 2)); background:#fff; border-bottom:1px solid #e5eaf2; }
+        .topbar-inner { width:100%; min-height:64px; display:flex; align-items:center; justify-content:space-between; }
+        .topbar-user { display:flex; align-items:center; gap:12px; }
+        .topbar-avatar { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:#65758b; color:#fff; font-size:13px; font-weight:700; }
+        .content { width:100%; max-width:1150px; box-sizing:border-box; margin:0 auto; padding:24px; }
+        .content > .row { margin-left:0; margin-right:0; }
+        .stats-container { width:100%; max-width:1000px; margin:0 auto; }
         .stat-card { min-height:112px; border:0; border-radius:8px; box-shadow:0 2px 10px rgba(36,61,103,.07); }
         .stat-number { font-size:25px; font-weight:700; }
         .stat-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:8px; background:#edf3ff; color:var(--blue); }
         .panel { background:#fff; border:0; border-radius:8px; box-shadow:0 2px 10px rgba(36,61,103,.07); }
         .request-row { padding:14px 16px; border-bottom:1px solid #edf0f5; }
         .request-row:last-child { border-bottom:0; }
-        .menu-toggle { display:none; }
-        @media(max-width:991px) {
-            .sidebar { transform:translateX(-100%); transition:.25s; }
-            .sidebar.show { transform:translateX(0); }
-            .main { margin-left:0; }
-            .menu-toggle { display:inline-grid; }
+        .dashboard-nav { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; }
+        .dashboard-nav .btn { padding:9px 16px; border-radius:8px; font-weight:600; }
+        .request-card { border:0; border-radius:8px; box-shadow:0 2px 10px rgba(36,61,103,.07); font-size:14px; }
+        .request-card .card-body { padding:12px 14px; }
+        .request-card .card-body hr { margin:10px 0; }
+        .request-card .card-footer { display:flex; justify-content:flex-end; gap:8px; padding:8px 14px; background:#fff; border-top:1px solid #edf0f5; }
+        .requests-container { width:100%; max-width:1000px; margin-left:auto; margin-right:auto; }
+        @media(max-width:575.98px) {
+            .topbar { padding:0 12px; }
         }
     </style>
 </head>
 <body>
-<aside class="sidebar" id="sidebar">
-    <div class="brand">▣ DINAS KU</div>
-    <nav class="menu">
-        <a class="active" href="dashboard_atasan.php">▦ <span>Dashboard</span></a>
-        <a href="data_karyawan.php">♙ <span>Data Karyawan</span></a>
-        <a href="pengajuan_masuk.php">▤ <span>Persetujuan</span></a>
-        <a href="penugasan.php">◆ <span>Penugasan</span></a>
-        <a href="surat_tugas.php">▧ <span>Surat Tugas</span></a>
-        <a href="laporan.php">▥ <span>Laporan</span></a>
-        <a href="logout.php">↪ <span>Logout</span></a>
-    </nav>
-</aside>
 <main class="main">
     <header class="topbar">
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-light border menu-toggle" type="button" onclick="document.getElementById('sidebar').classList.toggle('show')">☰</button>
-            <strong class="text-secondary">Sistem Informasi Perjalanan Dinas</strong>
+        <div class="topbar-inner">
+            <strong>Dashboard</strong>
+            <div class="topbar-user">
+                <span class="topbar-avatar"><?= htmlspecialchars(strtoupper(substr($_SESSION["name"], 0, 1))) ?></span>
+                <span class="d-none d-sm-inline small fw-semibold"><?= htmlspecialchars($_SESSION["name"]) ?></span>
+                <a class="btn btn-sm btn-outline-secondary" href="logout.php">Keluar</a>
+            </div>
         </div>
-        <span class="badge bg-primary px-3 py-2"><?= htmlspecialchars($_SESSION["name"]) ?></span>
     </header>
     <div class="content">
-        <h1 class="h4 mb-1">Dashboard</h1>
-        <p class="text-muted mb-4">Selamat datang, Bapak/Ibu Atasan</p>
-
-        <div class="row g-3">
-            <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Total Karyawan</div><div class="stat-number"><?= $counts["karyawan"] ?></div></div><div class="stat-icon">♙</div></div></div></div>
-            <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Menunggu</div><div class="stat-number"><?= $counts["menunggu"] ?></div></div><div class="stat-icon">◷</div></div></div></div>
-            <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Disetujui</div><div class="stat-number"><?= $counts["disetujui"] ?></div></div><div class="stat-icon">✓</div></div></div></div>
-            <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Penugasan Aktif</div><div class="stat-number"><?= $counts["aktif"] ?></div></div><div class="stat-icon">◆</div></div></div></div>
+        <nav class="dashboard-nav">
+            <a class="btn btn-primary" href="data_karyawan.php">♙ Data Karyawan</a>
+            <a class="btn btn-primary" href="penugasan.php">◆ Penugasan</a>
+            <a class="btn btn-primary" href="surat_tugas.php">▧ Surat Tugas</a>
+            <a class="btn btn-primary" href="laporan.php">▥ Laporan</a>
         </div>
 
-        <a class="btn btn-primary w-100 mt-4 py-3 text-start" href="penugasan.php">
-            <strong>＋ Buat Penugasan</strong><br><small>Berikan tugas perjalanan dinas kepada karyawan</small>
-        </a>
+        <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
-        <div class="row g-3 mt-2">
-            <div class="col-lg-8">
-                <section class="panel">
-                    <div class="p-3 border-bottom fw-bold">Pengajuan Terbaru</div>
-                    <?php if (!$requests): ?>
-                        <div class="text-muted text-center py-5">Belum ada pengajuan.</div>
-                    <?php else: foreach ($requests as $request): ?>
-                        <div class="request-row d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong><?= htmlspecialchars($request["nama"]) ?></strong>
-                                <div class="small text-muted"><?= htmlspecialchars($request["tujuan"]) ?></div>
-                                <div class="small text-muted"><?= date("d/m/Y", strtotime($request["tanggal_berangkat"])) ?></div>
-                            </div>
-                            <?php
-                            $badge = $request["status"] === "Disetujui" ? "success" : ($request["status"] === "Ditolak" ? "danger" : "warning");
-                            ?>
-                            <span class="badge bg-<?= $badge ?>"><?= htmlspecialchars($request["status"]) ?></span>
-                        </div>
-                    <?php endforeach; endif; ?>
-                </section>
+        <div class="stats-container">
+            <div class="row g-3">
+                <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Total Karyawan</div><div class="stat-number"><?= $counts["karyawan"] ?></div></div><div class="stat-icon">♙</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Menunggu</div><div class="stat-number"><?= $counts["menunggu"] ?></div></div><div class="stat-icon">◷</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Disetujui</div><div class="stat-number"><?= $counts["disetujui"] ?></div></div><div class="stat-icon">✓</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card stat-card"><div class="card-body d-flex justify-content-between"><div><div class="text-muted small">Penugasan Aktif</div><div class="stat-number"><?= $counts["aktif"] ?></div></div><div class="stat-icon">◆</div></div></div></div>
             </div>
-            <div class="col-lg-4">
-                <section class="panel p-3">
-                    <strong>Aksi Cepat</strong>
-                    <div class="d-grid gap-2 mt-3">
-                        <a class="btn btn-outline-primary" href="data_karyawan.php">Kelola Data Karyawan</a>
-                        <a class="btn btn-outline-primary" href="pengajuan_masuk.php">Tinjau Pengajuan</a>
-                        <a class="btn btn-outline-primary" href="penugasan.php">Buat Penugasan</a>
+        </div>
+
+        <section class="mt-4 requests-container">
+            <h2 class="h5 mb-3">Pengajuan Perjalanan Dinas</h2>
+            <div class="row g-3">
+                <?php if (!$requests): ?>
+                    <div class="col-12"><div class="card request-card text-center text-muted py-5">Belum ada pengajuan perjalanan dinas.</div></div>
+                <?php else: foreach ($requests as $request): ?>
+                    <div class="col-12 col-lg-6">
+                        <article class="card request-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h3 class="h6 mb-1"><?= htmlspecialchars($request["nama"]) ?></h3>
+                                        <div class="small text-muted"><?= htmlspecialchars($request["jabatan"]) ?> · <?= htmlspecialchars($request["departemen"]) ?></div>
+                                    </div>
+                                    <?php $badge = $request["status"] === "Disetujui" ? "success" : ($request["status"] === "Ditolak" ? "danger" : "warning"); ?>
+                                    <span class="badge bg-<?= $badge ?>"><?= htmlspecialchars($request["status"]) ?></span>
+                                </div>
+                                <hr>
+                                <div class="mb-1"><strong>Tujuan:</strong> <?= htmlspecialchars($request["tujuan"]) ?></div>
+                                <div class="mb-2"><strong>Berangkat - Pulang:</strong>
+                                    <?= date("d/m/Y", strtotime($request["tanggal_berangkat"])) ?> -
+                                    <?= date("d/m/Y", strtotime($request["tanggal_pulang"])) ?>
+                                </div>
+                                <div><strong>Keperluan:</strong><br><?= nl2br(htmlspecialchars($request["keperluan"])) ?></div>
+                                <?php if ($request["dokumen"]): ?>
+                                    <a class="d-inline-block mt-2" href="<?= htmlspecialchars($request["dokumen"]) ?>" target="_blank" rel="noopener">Lihat dokumen pendukung</a>
+                                <?php endif; ?>
+                                <?php if ($request["status"] === "Ditolak" && $request["alasan_penolakan"]): ?>
+                                    <div class="alert alert-danger mt-3 mb-0"><strong>Alasan:</strong> <?= nl2br(htmlspecialchars($request["alasan_penolakan"])) ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($request["status"] === "Menunggu"): ?>
+                                <div class="card-footer">
+                                    <form method="post">
+                                        <input type="hidden" name="action" value="approve">
+                                        <input type="hidden" name="id_pengajuan" value="<?= (int) $request["id_pengajuan"] ?>">
+                                        <button class="btn btn-success btn-sm">Setujui</button>
+                                    </form>
+                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reject<?= (int) $request["id_pengajuan"] ?>">Tolak</button>
+                                </div>
+                                <div class="modal fade" id="reject<?= (int) $request["id_pengajuan"] ?>" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <form class="modal-content" method="post">
+                                            <div class="modal-header">
+                                                <h3 class="modal-title h5">Alasan Penolakan</h3>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <input type="hidden" name="action" value="reject">
+                                                <input type="hidden" name="id_pengajuan" value="<?= (int) $request["id_pengajuan"] ?>">
+                                                <textarea class="form-control" name="alasan_penolakan" rows="4" required></textarea>
+                                            </div>
+                                            <div class="modal-footer"><button class="btn btn-danger">Tolak Pengajuan</button></div>
+                                        </form>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </article>
                     </div>
-                </section>
+                <?php endforeach; endif; ?>
             </div>
         </div>
     </div>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

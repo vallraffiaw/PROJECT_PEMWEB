@@ -52,6 +52,7 @@ $employees = [];
 $result = $conn->query(
     "SELECT k.*, u.username, u.email, u.role
      FROM karyawan k LEFT JOIN users u ON u.id=k.id_user
+     WHERE u.role='karyawan'
      ORDER BY k.nama"
 );
 while ($row = $result->fetch_assoc()) $employees[] = $row;
@@ -75,7 +76,8 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="navbar-brand fw-bold" href="dashboard_atasan.php">← Dashboard Atasan</a></div></nav>
+<style>.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}.back-circle:hover{background:#eef4ff;color:#1d4ed8}</style>
+<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="back-circle" href="dashboard_atasan.php" aria-label="Kembali ke Dashboard">←</a></div></nav>
 <main class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">Data Karyawan</h1>

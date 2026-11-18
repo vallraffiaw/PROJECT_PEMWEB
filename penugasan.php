@@ -11,7 +11,13 @@ $conn = connection();
 $message = "";
 $error = "";
 
-$employeeResult = $conn->query("SELECT id_karyawan,nama,nip,jabatan,departemen FROM karyawan ORDER BY nama");
+$employeeResult = $conn->query(
+    "SELECT k.id_karyawan,k.nama,k.nip,k.jabatan,k.departemen
+     FROM karyawan k
+     INNER JOIN users u ON u.id=k.id_user
+     WHERE u.role='karyawan'
+     ORDER BY k.nama"
+);
 $employees = [];
 while ($row = $employeeResult->fetch_assoc()) $employees[] = $row;
 
@@ -20,6 +26,26 @@ $atasanResult->bind_param("i", $_SESSION["user_id"]);
 $atasanResult->execute();
 $atasan = $atasanResult->get_result()->fetch_assoc();
 $atasanResult->close();
+
+if (!$atasan) {
+    $profileName = $_SESSION["name"];
+    $nip = "AT-" . str_pad((string) $_SESSION["user_id"], 6, "0", STR_PAD_LEFT);
+    $createAtasan = $conn->prepare(
+        "INSERT INTO karyawan (id_user,nama,nip,jabatan,departemen,no_hp)
+         VALUES (?, ?, ?, 'Atasan', 'Umum', '')"
+    );
+    $createAtasan->bind_param("iss", $_SESSION["user_id"], $profileName, $nip);
+    if ($createAtasan->execute()) {
+        $atasan = ["id_karyawan" => $createAtasan->insert_id];
+    }
+    $createAtasan->close();
+
+    $atasanResult = $conn->prepare("SELECT id_karyawan FROM karyawan WHERE id_user=?");
+    $atasanResult->bind_param("i", $_SESSION["user_id"]);
+    $atasanResult->execute();
+    $atasan = $atasanResult->get_result()->fetch_assoc();
+    $atasanResult->close();
+}
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $action = $_POST["action"] ?? "";
@@ -44,9 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $pulang = $_POST["tanggal_pulang"] ?? "";
         $keperluan = trim($_POST["keperluan"] ?? "");
 
-        if (!$atasan) {
-            $error = "Profil karyawan atasan belum tersedia. Tambahkan akun atasan ke data karyawan.";
-        } elseif ($idEmployee < 1 || $tujuan === "" || $berangkat === "" || $pulang === "" || $keperluan === "") {
+        if ($idEmployee < 1 || $tujuan === "" || $berangkat === "" || $pulang === "" || $keperluan === "") {
             $error = "Semua kolom penugasan wajib diisi.";
         } elseif ($pulang < $berangkat) {
             $error = "Tanggal pulang tidak boleh sebelum tanggal berangkat.";
@@ -81,7 +105,8 @@ $conn->close();
 <title>Penugasan</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>
 <body class="bg-light">
-<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="navbar-brand fw-bold" href="dashboard_atasan.php">← Dashboard Atasan</a></div></nav>
+<style>.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}.back-circle:hover{background:#eef4ff;color:#1d4ed8}</style>
+<nav class="navbar navbar-light bg-white border-bottom"><div class="container"><a class="back-circle" href="dashboard_atasan.php" aria-label="Kembali ke Dashboard">←</a></div></nav>
 <main class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h4 mb-0">Penugasan Karyawan</h1><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAssignment">＋ Buat Penugasan</button></div>
     <?php if ($message): ?><div class="alert alert-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>

@@ -20,15 +20,51 @@ if ($role === "atasan" && $_SERVER["REQUEST_METHOD"] === "POST") {
     if ($idPenugasan < 1 || $nomorSurat === "" || $tanggalTerbit === "") {
         $error = "Penugasan, nomor surat, dan tanggal terbit wajib diisi.";
     } else {
-        $stmt = $conn->prepare(
-            "INSERT INTO surat_tugas (id_penugasan, nomor_surat, tanggal_terbit)
-             VALUES (?, ?, ?)"
-        );
-        $stmt->bind_param("iss", $idPenugasan, $nomorSurat, $tanggalTerbit);
-        if ($stmt->execute()) {
-            $message = "Surat tugas berhasil diterbitkan.";
+        $atasanProfile = $conn->prepare("SELECT id_karyawan FROM karyawan WHERE id_user = ?");
+        $atasanProfile->bind_param("i", $_SESSION["user_id"]);
+        $atasanProfile->execute();
+        $atasan = $atasanProfile->get_result()->fetch_assoc();
+        $atasanProfile->close();
+
+        if (!$atasan) {
+            $name = $_SESSION["name"];
+            $nip = "AT-" . str_pad((string) $_SESSION["user_id"], 6, "0", STR_PAD_LEFT);
+            $createProfile = $conn->prepare(
+                "INSERT INTO karyawan (id_user,nama,nip,jabatan,departemen,no_hp)
+                 VALUES (?, ?, ?, 'Atasan', 'Umum', '')"
+            );
+            $createProfile->bind_param("iss", $_SESSION["user_id"], $name, $nip);
+            $createProfile->execute();
+            $idAtasan = $createProfile->insert_id;
+            $createProfile->close();
         } else {
-            $error = "Penugasan sudah memiliki surat atau nomor surat sudah digunakan.";
+            $idAtasan = (int) $atasan["id_karyawan"];
+        }
+
+        $stmt = $conn->prepare(
+            "INSERT INTO surat_tugas (id_penugasan, id_atasan, nomor_surat, tanggal_terbit)
+             VALUES (?, ?, ?, ?)"
+        );
+        $stmt->bind_param("iiss", $idPenugasan, $idAtasan, $nomorSurat, $tanggalTerbit);
+        try {
+            if ($stmt->execute()) {
+                $message = "Surat tugas berhasil diterbitkan.";
+            }
+        } catch (mysqli_sql_exception $exception) {
+            if ($conn->errno === 1062) {
+                $checkNumber = $conn->prepare("SELECT id_surat FROM surat_tugas WHERE nomor_surat = ?");
+                $checkNumber->bind_param("s", $nomorSurat);
+                $checkNumber->execute();
+                $checkNumber->store_result();
+                if ($checkNumber->num_rows > 0) {
+                    $error = "Nomor surat sudah digunakan. Gunakan nomor surat yang berbeda.";
+                } else {
+                    $error = "Penugasan ini sudah memiliki surat tugas.";
+                }
+                $checkNumber->close();
+            } else {
+                $error = "Surat tugas gagal diterbitkan.";
+            }
         }
         $stmt->close();
     }
@@ -89,9 +125,13 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<style>
+.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}
+.back-circle:hover{background:#eef4ff;color:#1d4ed8}
+</style>
 <nav class="navbar navbar-light bg-white border-bottom">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="<?= $role === "atasan" ? "dashboard_atasan.php" : "index.php" ?>">← Dashboard</a>
+        <a class="back-circle" href="<?= $role === "atasan" ? "dashboard_atasan.php" : "index.php" ?>" aria-label="Kembali ke Dashboard">←</a>
     </div>
 </nav>
 <main class="container py-4">

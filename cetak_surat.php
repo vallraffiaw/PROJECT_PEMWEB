@@ -15,10 +15,13 @@ if (!$id) {
 
 $conn = connection();
 $sql = "SELECT s.*, t.tujuan, t.tanggal_berangkat, t.tanggal_pulang, t.keperluan,
-               k.nama, k.nip, k.jabatan, k.departemen
+               k.nama, k.nip, k.jabatan, k.departemen,
+               COALESCE(pa.nama, pt.nama) AS nama_atasan
         FROM surat_tugas s
         JOIN penugasan t ON t.id_penugasan=s.id_penugasan
-        JOIN karyawan k ON k.id_karyawan=t.id_karyawan";
+        JOIN karyawan k ON k.id_karyawan=t.id_karyawan
+        LEFT JOIN karyawan pa ON pa.id_karyawan=s.id_atasan
+        LEFT JOIN karyawan pt ON pt.id_karyawan=t.id_atasan";
 
 if ($_SESSION["role"] === "atasan") {
     $stmt = $conn->prepare($sql . " WHERE s.id_surat=?");
@@ -78,7 +81,7 @@ if (!$letter) {
     <div class="sign">
         Yogyakarta, <?= date("d F Y", strtotime($letter["tanggal_terbit"])) ?><br>
         Atasan,<br>
-        <div class="sign-name">(Nama Atasan)</div>
+        <div class="sign-name">(<?= htmlspecialchars($letter["nama_atasan"] ?: "Nama Atasan") ?>)</div>
     </div>
 </body>
 </html>

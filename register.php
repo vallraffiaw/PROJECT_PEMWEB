@@ -46,6 +46,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $insert->bind_param("sssss", $name, $username, $email, $hashedPassword, $role);
 
             if ($insert->execute()) {
+                if ($role === "atasan") {
+                    $userId = $insert->insert_id;
+                    $nip = "AT-" . str_pad((string) $userId, 6, "0", STR_PAD_LEFT);
+                    $employeeInsert = $conn->prepare(
+                        "INSERT INTO karyawan (id_user, nama, nip, jabatan, departemen, no_hp)
+                         VALUES (?, ?, ?, 'Atasan', 'Umum', '')"
+                    );
+                    $employeeInsert->bind_param("iss", $userId, $name, $nip);
+                    $employeeInsert->execute();
+                    $employeeInsert->close();
+                }
                 $success = "Registrasi berhasil. Silakan login.";
                 $_POST = [];
             } else {

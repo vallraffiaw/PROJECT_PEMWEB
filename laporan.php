@@ -69,7 +69,8 @@ $conn->close();
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-light bg-white border-bottom no-print">
-    <div class="container"><a class="navbar-brand fw-bold" href="dashboard_atasan.php">← Dashboard Atasan</a></div>
+    <style>.back-circle{width:38px;height:38px;display:inline-grid;place-items:center;border:1px solid #d7deea;border-radius:50%;background:#fff;color:#2563eb;text-decoration:none;font-weight:700}.back-circle:hover{background:#eef4ff;color:#1d4ed8}</style>
+    <div class="container"><a class="back-circle" href="dashboard_atasan.php" aria-label="Kembali ke Dashboard">←</a></div>
 </nav>
 <main class="container-fluid px-lg-5 py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
