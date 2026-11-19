@@ -1,23 +1,9 @@
--- ====================================================================
--- DATABASE DEMO - Sistem SDM (Pengajuan & Penugasan Perjalanan Dinas)
--- Import file ini SEKALI di phpMyAdmin (tab Import). Berisi struktur + data contoh.
--- PERINGATAN: file ini menghapus (DROP TABLE) semua tabel aplikasi di
--- `sistem_sdm_projek_PW` lalu membuatnya ulang dengan data demo.
--- Database lain tidak tersentuh.
---
--- AKUN DEMO (semua password: password123)
---   Atasan   : budi.santoso  / sari.wulandari
---   Karyawan : rina.puspita, dedi.kurniawan, maya.anggraini,
---              andi.pratama, lia.hartono, rudi.hermawan
--- ====================================================================
-
 CREATE DATABASE IF NOT EXISTS `sistem_sdm_projek_PW`
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
 USE `sistem_sdm_projek_PW`;
 
--- Reset tabel (aman dijalankan berulang kali)
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `notifikasi`;
 DROP TABLE IF EXISTS `surat_tugas`;
@@ -157,9 +143,6 @@ CREATE TABLE IF NOT EXISTS `notifikasi` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
--- ====================================================================
--- DATA DEMO
--- ====================================================================
 SET NAMES utf8mb4;
 
 -- USERS (id 1-2 atasan, id 3-8 karyawan) -- password: password123
