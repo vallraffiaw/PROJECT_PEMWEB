@@ -145,7 +145,6 @@ CREATE TABLE IF NOT EXISTS `notifikasi` (
 
 SET NAMES utf8mb4;
 
--- USERS (id 1-2 atasan, id 3-8 karyawan) -- password: password123
 INSERT INTO `users` (`id`,`name`,`username`,`email`,`password`,`role`,`created_at`) VALUES
 (1,'Budi Santoso','budi.santoso','budi.santoso@perusahaan.co.id','$2y$10$rrW4q0wwSfeivSQkP3m7te1yJAmHDZaJqiMlCriAXyhQoTQN4LtQi','atasan','2026-06-01 08:00:00'),
 (2,'Sari Wulandari','sari.wulandari','sari.wulandari@perusahaan.co.id','$2y$10$rrW4q0wwSfeivSQkP3m7te1yJAmHDZaJqiMlCriAXyhQoTQN4LtQi','atasan','2026-06-01 08:05:00'),
@@ -156,7 +155,6 @@ INSERT INTO `users` (`id`,`name`,`username`,`email`,`password`,`role`,`created_a
 (7,'Lia Hartono','lia.hartono','lia.hartono@perusahaan.co.id','$2y$10$rrW4q0wwSfeivSQkP3m7te1yJAmHDZaJqiMlCriAXyhQoTQN4LtQi','karyawan','2026-06-03 09:15:00'),
 (8,'Rudi Hermawan','rudi.hermawan','rudi.hermawan@perusahaan.co.id','$2y$10$rrW4q0wwSfeivSQkP3m7te1yJAmHDZaJqiMlCriAXyhQoTQN4LtQi','karyawan','2026-06-03 09:30:00');
 
--- KARYAWAN (id_karyawan 1-8 mengikuti id user; atasan memakai NIP format AT-xxxxxx)
 INSERT INTO `karyawan` (`id_karyawan`,`id_user`,`nama`,`nip`,`jabatan`,`departemen`,`no_hp`,`alamat`) VALUES
 (1,1,'Budi Santoso','AT-000001','Atasan','Umum','081234567801','Jl. Merdeka No. 10, Bandung'),
 (2,2,'Sari Wulandari','AT-000002','Atasan','Umum','081234567802','Jl. Dago Asri No. 25, Bandung'),
@@ -167,7 +165,6 @@ INSERT INTO `karyawan` (`id_karyawan`,`id_user`,`nama`,`nip`,`jabatan`,`departem
 (7,7,'Lia Hartono','EMP-2024-005','Staf Operasional','Operasional','081234567807','Jl. Pasteur No. 31, Bandung'),
 (8,8,'Rudi Hermawan','EMP-2024-006','Supervisor Logistik','Operasional','081234567808','Jl. Kopo No. 203, Bandung');
 
--- PENGAJUAN (campuran status Menunggu / Disetujui / Ditolak)
 INSERT INTO `pengajuan` (`id_pengajuan`,`id_karyawan`,`tujuan`,`tanggal_berangkat`,`tanggal_pulang`,`keperluan`,`dokumen`,`status`,`alasan_penolakan`,`biaya_estimasi`,`tanggal_pengajuan`,`tanggal_keputusan`) VALUES
 (1,3,'Bandung - Jakarta (Kantor Klien PT Maju Jaya)','2026-09-14','2026-09-16','Presentasi proposal kampanye pemasaran kepada klien baru.','dokumen_1795015775_e8b5d1ab1111.pdf','Disetujui',NULL,2500000,'2026-09-08 10:15:00','2026-09-10 14:00:00'),
 (2,4,'Surabaya','2026-10-05','2026-10-08','Audit keuangan cabang Surabaya triwulan III.',NULL,'Disetujui',NULL,4200000,'2026-09-28 09:30:00','2026-09-30 11:20:00'),
@@ -180,7 +177,6 @@ INSERT INTO `pengajuan` (`id_pengajuan`,`id_karyawan`,`tujuan`,`tanggal_berangka
 (9,5,'Makassar','2026-10-20','2026-10-23','Wawancara kandidat untuk posisi kepala cabang.',NULL,'Ditolak','Wawancara dapat dilakukan secara daring sehingga perjalanan tidak diperlukan.',3600000,'2026-10-13 10:40:00','2026-10-15 13:15:00'),
 (10,6,'Palembang','2026-08-18','2026-08-20','Instalasi dan pelatihan sistem untuk kantor perwakilan.','dokumen_1795026471_26c5c246bfdf.pdf','Disetujui',NULL,2000000,'2026-08-10 09:05:00','2026-08-12 10:00:00');
 
--- PENUGASAN (5 dari pengajuan yang disetujui + 2 penugasan langsung oleh atasan)
 INSERT INTO `penugasan` (`id_penugasan`,`id_pengajuan`,`id_karyawan`,`id_atasan`,`jenis`,`tujuan`,`tanggal_berangkat`,`tanggal_pulang`,`keperluan`,`status`,`catatan`) VALUES
 (1,1,3,1,'Pengajuan','Bandung - Jakarta (Kantor Klien PT Maju Jaya)','2026-09-14','2026-09-16','Presentasi proposal kampanye pemasaran kepada klien baru.','Selesai','Klien menyetujui proposal tahap awal.'),
 (2,2,4,1,'Pengajuan','Surabaya','2026-10-05','2026-10-08','Audit keuangan cabang Surabaya triwulan III.','Selesai','Laporan audit sudah diserahkan ke direksi.'),
@@ -190,7 +186,6 @@ INSERT INTO `penugasan` (`id_penugasan`,`id_pengajuan`,`id_karyawan`,`id_atasan`
 (6,NULL,8,1,'Langsung','Bogor','2026-11-20','2026-11-22','Pengecekan stok dan inspeksi gudang cabang Bogor.','Aktif','Penugasan mendadak dari atasan.'),
 (7,NULL,7,2,'Langsung','Bandung - Cimahi','2026-10-12','2026-10-14','Supervisi pengiriman barang ke pelanggan prioritas.','Selesai',NULL);
 
--- SURAT TUGAS (penugasan 4 dan 6 sengaja belum punya surat, untuk demo fitur "Buat Surat")
 INSERT INTO `surat_tugas` (`id_surat`,`id_penugasan`,`id_atasan`,`nomor_surat`,`tanggal_terbit`,`file_surat`) VALUES
 (1,5,2,'018/ST/HRD/VIII/2026','2026-08-14',NULL),
 (2,1,1,'021/ST/HRD/IX/2026','2026-09-11',NULL),
@@ -198,7 +193,6 @@ INSERT INTO `surat_tugas` (`id_surat`,`id_penugasan`,`id_atasan`,`nomor_surat`,`
 (4,7,2,'028/ST/HRD/X/2026','2026-10-09',NULL),
 (5,3,2,'031/ST/HRD/XI/2026','2026-11-12',NULL);
 
--- NOTIFIKASI
 INSERT INTO `notifikasi` (`id_notifikasi`,`id_user`,`judul`,`pesan`,`tautan`,`sudah_dibaca`,`created_at`) VALUES
 (1,1,'Pengajuan baru','Lia Hartono mengajukan perjalanan dinas ke Medan (2-5 Des 2026).','dashboard_atasan.php',0,'2026-11-17 15:10:00'),
 (2,1,'Pengajuan baru','Rudi Hermawan mengajukan perjalanan dinas ke Semarang (10-12 Des 2026).','dashboard_atasan.php',0,'2026-11-18 11:00:00'),
